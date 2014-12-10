@@ -354,7 +354,7 @@ class snmp (
     $trapdrun = 'no'
   }
 
-  if $::osfamily != 'Debian' {
+  if !($::osfamily in [ 'Darwin', 'Debian' ]) {
     $snmptrapd_conf_notify = Service['snmptrapd']
   } else {
     $snmptrapd_conf_notify = Service['snmpd']
@@ -368,18 +368,12 @@ class snmp (
     }
   }
 
-  package { 'snmpd':
-    ensure => $package_ensure,
-    name   => $package_name,
-  }
-
   file { 'var-net-snmp':
     ensure  => 'directory',
     mode    => $snmp::params::varnetsnmp_perms,
     owner   => $snmp::params::varnetsnmp_owner,
     group   => $snmp::params::varnetsnmp_group,
     path    => $snmp::params::var_net_snmp,
-    require => Package['snmpd'],
   }
 
   if $::osfamily == 'FreeBSD' {
@@ -399,11 +393,10 @@ class snmp (
     group   => $snmp::params::service_config_dir_group,
     path    => $snmp::params::service_config,
     content => template('snmp/snmpd.conf.erb'),
-    require => Package['snmpd'],
     notify  => Service['snmpd'],
   }
 
-  if $::osfamily != 'FreeBSD' {
+  if !($::osfamily in [ 'Darwin', 'FreeBSD' ]) {
     file { 'snmpd.sysconfig':
       ensure  => $file_ensure,
       mode    => '0644',
@@ -423,7 +416,6 @@ class snmp (
     group   => $snmp::params::service_config_dir_group,
     path    => $snmp::params::trap_service_config,
     content => template('snmp/snmptrapd.conf.erb'),
-    require => Package['snmpd'],
     notify  => $snmptrapd_conf_notify,
   }
 
@@ -486,6 +478,28 @@ class snmp (
     enable     => $service_enable_real,
     hasstatus  => $service_hasstatus,
     hasrestart => $service_hasrestart,
-    require    => [ Package['snmpd'], File['var-net-snmp'], ],
+  }
+
+  if $package_name == undef {
+    Service['snmpd'] {
+      require => File['var-net-snmp']
+    }
+  } else {
+    package { 'snmpd':
+      ensure => $package_ensure,
+      name   => $package_name,
+    }
+    File['var-net-snmp'] {
+      require => Package['snmpd'],
+    }
+    File['snmpd.conf'] {
+      require => Package['snmpd'],
+    }
+    File['snmptrapd.conf'] {
+      require => Package['snmpd'],
+    }
+    Service['snmpd'] {
+      require => [ Package['snmpd'], File['var-net-snmp'] ],
+    }
   }
 }

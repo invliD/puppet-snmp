@@ -349,6 +349,22 @@ class snmp::params {
       $trap_service_name        = 'snmptrapd'
       $snmptrapd_options        = ''
     }
+    'Darwin': {
+      $package_name             = undef
+      $service_config           = '/etc/snmp/snmpd.conf'
+      $service_config_perms     = '0644'
+      $service_config_dir_owner = 'root'
+      $service_config_dir_group = 'wheel'
+      $service_name             = 'org.net-snmp.snmpd'
+      #$snmpd_options            = 'd'
+
+      $var_net_snmp             = '/var/db/net-snmp'
+      $varnetsnmp_perms         = '0700'
+      $varnetsnmp_owner         = 'root'
+      $varnetsnmp_group         = 'wheel'
+
+      $trap_service_config      = '/etc/snmp/snmptrapd.conf'
+    }
     default: {
       fail("Module ${::module} is not supported on ${::operatingsystem}")
     }

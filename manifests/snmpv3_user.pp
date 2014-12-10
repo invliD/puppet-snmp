@@ -82,13 +82,26 @@ define snmp::snmpv3_user (
   } else {
     $cmd = "createUser ${title} ${authtype} ${authpass}"
   }
+
+  if defined(Package['snmpd']) {
+    $exec_require = [ Package['snmpd'], File['var-net-snmp'] ]
+  } else {
+    $exec_require = File['var-net-snmp']
+  }
+
+  if $::osfamily == 'Darwin' {
+    $user_exec = "launchctl unload /System/Library/LaunchDaemons/org.net-snmp.snmpd.plist ; echo \"${cmd}\" >>${snmp::params::var_net_snmp}/${daemon}.conf && touch ${snmp::params::var_net_snmp}/${title}-${daemon}"
+  } else {
+    $user_exec = "service ${service_name} stop ; echo \"${cmd}\" >>${snmp::params::var_net_snmp}/${daemon}.conf && touch ${snmp::params::var_net_snmp}/${title}-${daemon}"
+  }
+
   exec { "create-snmpv3-user-${title}":
     path    => '/bin:/sbin:/usr/bin:/usr/sbin',
     # TODO: Add "rwuser ${title}" (or rouser) to /etc/snmp/${daemon}.conf
-    command => "service ${service_name} stop ; echo \"${cmd}\" >>${snmp::params::var_net_snmp}/${daemon}.conf && touch ${snmp::params::var_net_snmp}/${title}-${daemon}",
+    command => $user_exec,
     creates => "${snmp::params::var_net_snmp}/${title}-${daemon}",
     user    => 'root',
-    require => [ Package['snmpd'], File['var-net-snmp'], ],
+    require => $exec_require,
     before  => $service_before,
   }
 }
